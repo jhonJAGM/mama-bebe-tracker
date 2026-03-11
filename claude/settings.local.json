@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell.exe -Command \"echo \\\\$PROFILE\")",
+      "Bash(powershell.exe -Command \"Get-Command code -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
+      "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \". 'C:\\\\Users\\\\jagonzalezm\\\\Documents\\\\WindowsPowerShell\\\\Microsoft.PowerShell_profile.ps1'; Write-Host 'Perfil cargado OK'\")",
+      "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -File - <<'PS'\n. \"C:\\\\Users\\\\jagonzalezm\\\\Documents\\\\WindowsPowerShell\\\\Microsoft.PowerShell_profile.ps1\"\nWrite-Host \"PROJECTS_ROOT: $env:PROJECTS_ROOT\"\nWrite-Host \"FLUX_ROOT: $env:FLUX_ROOT\"\nWrite-Host \"Git Bash: $env:CLAUDE_CODE_GIT_BASH_PATH\"\nPS)",
+      "Bash(xxd \"C:/Users/jagonzalezm/Documents/JHON GONZALEZ/ADMON/FLUX/\\\\$PROFILE.txt\" | head -5)"
+    ]
+  }
+}

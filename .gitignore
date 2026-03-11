@@ -1,0 +1,5 @@
+# Archivos sensibles - no subir
+*.env
+*.key
+*.pem
+secrets.*
