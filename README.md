@@ -1,33 +1,36 @@
-# PC_of - Configuraciones de Workspace
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-Repositorio de configuraciones del PC de oficina (FLUX Workspace).
+## Getting Started
 
-## Contenido
+First, run the development server:
 
-### `powershell/`
-- `profile.ps1` — Perfil principal FLUX: variables de entorno, aliases, funciones, herramientas
-- `Microsoft.PowerShell_profile.ps1` — Loader del perfil FLUX (cargado automáticamente por PowerShell/VS Code)
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
 
-### `claude/`
-- `settings.local.json` — Permisos y configuraciones locales de Claude Code
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Rutas de instalación en este PC
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-| Archivo | Ruta destino |
-|---|---|
-| `profile.ps1` | `C:\Users\jagonzalezm\Documents\JHON GONZALEZ\ADMON\FLUX\profile.ps1` |
-| `Microsoft.PowerShell_profile.ps1` | `C:\Users\jagonzalezm\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1` |
-| `settings.local.json` | `C:\Users\jagonzalezm\.claude\settings.local.json` |
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Variables de entorno configuradas
+## Learn More
 
-| Variable | Valor |
-|---|---|
-| `PROJECTS_ROOT` | `C:\Users\jagonzalezm\Documents\JHON GONZALEZ\ADMON\FLUX\DEV` |
-| `FLUX_ROOT` | `C:\Users\jagonzalezm\Documents\JHON GONZALEZ\ADMON\FLUX` |
-| `CLAUDE_CODE_GIT_BASH_PATH` | `C:\Users\jagonzalezm\AppData\Local\Programs\Git\bin\bash.exe` |
+To learn more about Next.js, take a look at the following resources:
 
-## Relacionado
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-- PC Personal: ver repositorio `PC_personal` (si existe)
-- Proyectos activos: `web_app_prueba` → https://github.com/jhonJAGM/web_app_prueba
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

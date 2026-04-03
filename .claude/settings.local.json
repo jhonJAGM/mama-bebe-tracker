@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --yes)",
+      "Bash(npx create-next-app@latest _tmp_next --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --yes)",
+      "Bash(npx create-next-app@latest tmpnext --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --yes)",
+      "Bash(cp -r tmpnext/. .)",
+      "Bash(rm -rf tmpnext)",
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest init --defaults --base-color neutral)",
+      "Bash(npx shadcn@latest init --defaults)"
+    ]
+  }
+}
