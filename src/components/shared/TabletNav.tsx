@@ -53,6 +53,14 @@ const NAV_ITEMS: NavItem[] = [
     activeBg: 'bg-amber-50',
     match: (p) => p.startsWith('/bitacora'),
   },
+  {
+    label: 'Ciclo',
+    href: '/ciclo',
+    icon: '🔄',
+    activeColor: 'text-emerald-600',
+    activeBg: 'bg-emerald-50',
+    match: (p) => p.startsWith('/ciclo'),
+  },
 ]
 
 export default function TabletNav() {

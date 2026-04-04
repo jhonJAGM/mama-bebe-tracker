@@ -252,7 +252,7 @@ export default async function DashboardPage() {
         <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-3">Acciones rápidas</p>
         <div className="grid grid-cols-4 gap-2">
           {[
-            { label: 'Toma',   icon: '🍼', href: '/bebe/tomas',         bg: 'bg-rose-50 border-rose-100',     text: 'text-rose-600' },
+            { label: 'Ciclo',  icon: '🔄', href: '/ciclo',               bg: 'bg-emerald-50 border-emerald-100', text: 'text-emerald-600' },
             { label: 'Pañal',  icon: '👶', href: '/bebe/panales',        bg: 'bg-sky-50 border-sky-100',       text: 'text-sky-600' },
             { label: 'Sueño',  icon: '😴', href: '/bebe/sueno',          bg: 'bg-indigo-50 border-indigo-100', text: 'text-indigo-600' },
             { label: 'Nota',   icon: '📝', href: '/bitacora',            bg: 'bg-amber-50 border-amber-100',   text: 'text-amber-600' },
