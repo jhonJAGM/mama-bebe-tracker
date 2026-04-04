@@ -1,0 +1,15 @@
+[build]
+builder = "nixpacks"
+buildCommand = "npm run build"
+
+[deploy]
+startCommand = "npm run start"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+[environments.production]
+# Railway expone la app en el puerto indicado por $PORT
+# Next.js lo toma automáticamente via next start -p $PORT
+
+[environments.production.variables]
+NODE_ENV = "production"
