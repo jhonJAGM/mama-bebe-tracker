@@ -1,7 +1,7 @@
 {
-  "name": "NoeCare",
-  "short_name": "NoeCare",
-  "description": "Cuidado inteligente para Noe",
+  "name": "Mamá & Bebé Tracker",
+  "short_name": "BebéApp",
+  "description": "Seguimiento integral de bebé recién nacida y mamá post-cesárea",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",

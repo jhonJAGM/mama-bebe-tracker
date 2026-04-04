@@ -6,13 +6,10 @@ export const CYCLE_TIMES = [
 ] as const
 export type CycleTime = typeof CYCLE_TIMES[number]
 
-export type FeedingStatus = 'pending' | 'in_progress' | 'completed'
-
 export interface IFeeding extends Document {
   babyId: Types.ObjectId
   date: Date              // medianoche del día (para agrupar por día sin TZ issues)
   cycleTime: CycleTime   // uno de los 8 ciclos fijos
-  status: FeedingStatus
   startTime?: Date
   endTime?: Date
   durationMinutes?: number   // calculado automático
@@ -40,18 +37,13 @@ const FeedingSchema = new Schema<IFeeding>(
       enum: CYCLE_TIMES,
       required: true,
     },
-    status: {
-      type: String,
-      enum: ['pending', 'in_progress', 'completed'],
-      default: 'pending',
-    },
     startTime: { type: Date },
     endTime: { type: Date },
     durationMinutes: { type: Number, min: 0 },
     breastMilkMl: { type: Number, default: 0, min: 0 },
     complementMl: { type: Number, default: 0, min: 0 },
     totalMl: { type: Number, default: 0, min: 0 },
-    maxLimitMl: { type: Number, default: 150 },
+    maxLimitMl: { type: Number, default: 120 },
     minLimitMl: { type: Number, default: 60 },
     exceededLimit: { type: Boolean, default: false },
     belowMinimum: { type: Boolean, default: false },

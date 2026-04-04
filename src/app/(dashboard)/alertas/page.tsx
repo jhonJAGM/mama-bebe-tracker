@@ -10,7 +10,7 @@ type AlertConfig = {
 export default function AlertasPage() {
   const [config, setConfig] = useState<AlertConfig | null>(null)
   const [phone, setPhone] = useState('')
-  const [testMessage, setTestMessage] = useState('👋 Hola! Esta es una alerta de prueba de NoeCare.')
+  const [testMessage, setTestMessage] = useState('👋 Hola! Esta es una alerta de prueba de Mamá & Bebé Tracker.')
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null)
 

@@ -1,16 +1,10 @@
 import { getDashboardData } from '@/lib/dashboard-data'
 import HeroCountdown from '@/components/dashboard/HeroCountdown'
-import MiniMlChart from '@/components/dashboard/MiniMlChart'
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-function formatHour(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleTimeString('es-CO', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'America/Bogota',
-  })
-}
+import MetricCard from '@/components/dashboard/MetricCard'
+import CyclePill from '@/components/dashboard/CyclePill'
+import MlAreaChart from '@/components/dashboard/MlAreaChart'
+import MomCard from '@/components/dashboard/MomCard'
+import QuickActions from '@/components/dashboard/QuickActions'
 
 function babyAgeInDays(birthDateISO?: string | null): number | null {
   if (!birthDateISO) return null
@@ -18,257 +12,187 @@ function babyAgeInDays(birthDateISO?: string | null): number | null {
   return Math.floor(diff / (1000 * 60 * 60 * 24))
 }
 
-const CYCLE_STATUS_COLORS: Record<string, string> = {
-  pending:     'bg-gray-200 text-gray-500',
-  in_progress: 'bg-yellow-300 text-yellow-800',
-  completed:   'bg-emerald-400 text-white',
-  alert:       'bg-red-400 text-white',
+function formatElapsed(isoStart?: string | null): string {
+  if (!isoStart) return ''
+  const mins = Math.round((Date.now() - new Date(isoStart).getTime()) / 60000)
+  if (mins < 60) return `hace ${mins}min`
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return `hace ${h}h${m > 0 ? ` ${m}min` : ''}`
 }
 
-// ── Page ───────────────────────────────────────────────────────────────────
 export default async function DashboardPage() {
   const data = await getDashboardData()
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const baby = data.baby as any
   const ageInDays = babyAgeInDays(baby?.birthDate)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const momLog = data.momLog as any
   const painLevel: number = momLog?.painLevel ?? 0
   const temperature: number = momLog?.temperature ?? 0
-
-  const today = new Date().toLocaleDateString('es-CO', {
-    weekday: 'long', day: 'numeric', month: 'long',
-    timeZone: 'America/Bogota',
-  })
-
-  // Objetivo diario de ml (8 ciclos × 120 ml default = 960 ml)
+  const mood: number = momLog?.mood ?? 0
   const dailyMlGoal = 960
   const mlProgress = Math.min(100, Math.round((data.todayMlTotal / dailyMlGoal) * 100))
+  const chartData = data.todayCycles
+    .filter((c) => c.totalMl > 0)
+    .map((c) => ({ hour: c.cycleTime, ml: c.totalMl }))
+  const lastFeedingElapsed = data.lastFeeding?.startTime
+    ? formatElapsed(data.lastFeeding.startTime)
+    : null
+  const sleepH = data.sleepSummary?.totalHours ?? 0
+  const sleepDisplay = sleepH > 0
+    ? `${Math.floor(sleepH)}h ${Math.round((sleepH % 1) * 60)}min`
+    : '0h'
+  const nextMed = data.upcomingMeds.length > 0 ? data.upcomingMeds[0] : null
+  const babyName = baby?.name ?? 'Bebé'
+  const initial = babyName.charAt(0).toUpperCase()
 
   return (
-    <div className="space-y-4 pb-6">
-
-      {/* DB error banner */}
+    <div className="space-y-4 pb-4">
       {data.dbError && (
-        <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          ⚠️ Sin conexión a la base de datos. Verifica <code className="text-xs">MONGODB_URI</code>.
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+          ⚠️ Sin conexión a la base de datos.
         </div>
       )}
 
-      {/* ── Header: bebé info ── */}
-      <div className="flex items-center gap-3">
-        {/* Avatar placeholder */}
-        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-rose-300 to-pink-400 flex items-center justify-center text-2xl shadow-md shrink-0">
-          👶
+      <div className="flex items-center justify-between py-2 border-b border-white/5">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">🌸</span>
+          <span className="text-base font-bold text-white tracking-tight">
+            mama<span className="text-rose-400">·</span>bebe
+          </span>
         </div>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold text-slate-800 truncate">
-            {baby?.name ?? 'Bebé'}
-          </h1>
-          <p className="text-sm text-slate-400 capitalize">{today}</p>
-        </div>
-        {ageInDays != null && (
-          <div className="shrink-0 text-center bg-rose-50 border border-rose-200 rounded-2xl px-3 py-1.5">
-            <span className="text-2xl font-bold text-rose-600 leading-none block">{ageInDays}</span>
-            <span className="text-[10px] text-rose-400 font-medium uppercase tracking-wide">días</span>
+        <div className="flex items-center gap-2">
+          {ageInDays != null && (
+            <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-3 py-1">
+              <span className="text-xs font-semibold text-white/70">{babyName}</span>
+              <span className="text-white/20">·</span>
+              <span className="text-xs font-bold text-rose-400">Día {ageInDays}</span>
+            </div>
+          )}
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-rose-500/25">
+            {initial}
           </div>
-        )}
+        </div>
       </div>
 
-      {/* ── Hero: countdown próxima toma ── */}
       <HeroCountdown
         nextCycleISO={data.nextCycleISO}
         lastFeedingCycle={data.lastFeeding?.cycleTime ?? null}
         lastFeedingMl={data.lastFeeding?.totalMl ?? null}
       />
 
-      {/* ── Grid métricas 2×2 ── */}
       <div className="grid grid-cols-2 gap-3">
-
-        {/* Leche total hoy */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-          <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Leche hoy</p>
-          <p className="text-4xl font-bold text-slate-800 mt-1 leading-none">
-            {data.todayMlTotal}
-            <span className="text-base font-normal text-slate-400 ml-1">ml</span>
-          </p>
-          <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${mlProgress >= 100 ? 'bg-emerald-400' : 'bg-rose-400'}`}
-              style={{ width: `${mlProgress}%` }}
-            />
-          </div>
-          <p className="text-[10px] text-slate-400 mt-1">{mlProgress}% del objetivo ({dailyMlGoal} ml)</p>
-        </div>
-
-        {/* Pañales */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-          <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Pañales hoy</p>
-          <p className="text-4xl font-bold text-slate-800 mt-1 leading-none">
-            {data.diaperSummary?.total ?? 0}
-          </p>
-          <div className="flex gap-3 mt-2 text-xs text-slate-500">
-            <span>💧 {data.diaperSummary?.pee ?? 0}</span>
-            <span>💩 {data.diaperSummary?.poop ?? 0}</span>
-          </div>
-          <p className="text-[10px] text-slate-400 mt-1">cambios registrados</p>
-        </div>
-
-        {/* Sueño */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-          <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Sueño</p>
-          <p className="text-4xl font-bold text-slate-800 mt-1 leading-none">
-            {data.sleepSummary?.totalHours ?? 0}
-            <span className="text-base font-normal text-slate-400 ml-1">h</span>
-          </p>
-          <p className="text-xs text-slate-500 mt-2">
-            {data.sleepSummary?.lastSleepStart
-              ? `Última siesta: ${formatHour(data.sleepSummary.lastSleepStart)}`
-              : 'Sin siestas registradas'}
-          </p>
-          <p className="text-[10px] text-slate-400 mt-1">
-            {data.sleepSummary?.totalHours! >= 14 ? '🌙 Durmiendo bien' : '☀️ Acumulado hoy'}
-          </p>
-        </div>
-
-        {/* Tomas completadas */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-          <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Tomas hoy</p>
-          <p className="text-4xl font-bold text-slate-800 mt-1 leading-none">
-            {data.feedingsToday}
-            <span className="text-base font-normal text-slate-400 ml-1">/ 8</span>
-          </p>
-          <div className="flex gap-0.5 mt-2">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className={`flex-1 h-1.5 rounded-full ${i < data.feedingsToday ? 'bg-rose-400' : 'bg-slate-100'}`}
-              />
-            ))}
-          </div>
-          <p className="text-[10px] text-slate-400 mt-1">ciclos completados</p>
-        </div>
+        <MetricCard
+          icon="🍼"
+          iconBg="bg-rose-500/20"
+          title="Total ml hoy"
+          value={data.todayMlTotal}
+          unit="ml"
+          subtitle={`de ${dailyMlGoal}ml objetivo`}
+          progress={mlProgress}
+          progressColor="bg-gradient-to-r from-rose-500 to-pink-500"
+          trend={lastFeedingElapsed ? `última ${lastFeedingElapsed}` : undefined}
+          trendDir="neutral"
+        />
+        <MetricCard
+          icon="👶"
+          iconBg="bg-violet-500/20"
+          title="Pañales hoy"
+          value={data.diaperSummary?.total ?? 0}
+          subtitle="cambios registrados"
+          trendDir="neutral"
+          extra={
+            <div className="flex gap-3 text-xs text-white/40 -mt-1">
+              <span>💧 {data.diaperSummary?.pee ?? 0}</span>
+              <span>💩 {data.diaperSummary?.poop ?? 0}</span>
+            </div>
+          }
+        />
+        <MetricCard
+          icon="🌙"
+          iconBg="bg-blue-500/20"
+          title="Sueño"
+          value={sleepDisplay}
+          subtitle={sleepH >= 14 ? '🌙 Durmiendo bien' : '☀️ Acumulado hoy'}
+          trendDir={sleepH >= 14 ? 'up' : 'neutral'}
+          trend={sleepH >= 14 ? 'meta' : undefined}
+        />
+        <MetricCard
+          icon="✅"
+          iconBg="bg-emerald-500/20"
+          title="Tomas hoy"
+          value={data.feedingsToday}
+          unit="/ 8"
+          subtitle="ciclos completados"
+          progress={(data.feedingsToday / 8) * 100}
+          progressColor="bg-gradient-to-r from-emerald-500 to-teal-500"
+          trendDir={data.feedingsToday >= 6 ? 'up' : 'neutral'}
+          trend={data.feedingsToday >= 6 ? 'buen ritmo' : undefined}
+        />
       </div>
 
-      {/* ── Timeline de 8 ciclos ── */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-        <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-3">Ciclos del día</p>
-        <div className="flex gap-1.5 overflow-x-auto pb-1">
-          {data.todayCycles.map((c) => (
-            <a key={c.cycleTime} href="/bebe/tomas" className="shrink-0 text-center group">
-              <div className={`w-12 h-12 rounded-xl flex flex-col items-center justify-center text-[10px] font-bold transition-transform group-active:scale-90 ${
-                CYCLE_STATUS_COLORS[c.status] ?? CYCLE_STATUS_COLORS.pending
-              }`}>
-                <span className="text-xs leading-none">{c.cycleTime}</span>
-                {c.totalMl > 0 && <span className="text-[9px] mt-0.5 opacity-80">{c.totalMl}ml</span>}
-              </div>
-            </a>
-          ))}
-        </div>
-        <div className="flex gap-3 mt-2 text-[10px] text-slate-400">
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-gray-200 inline-block"/>Pendiente</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-yellow-300 inline-block"/>En curso</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-emerald-400 inline-block"/>Completo</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-red-400 inline-block"/>Alerta</span>
-        </div>
-      </div>
-
-      {/* ── Mini curva de ml ── */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Curva de leche</p>
-          <div className="flex gap-3 text-[10px] text-slate-400">
-            <span className="flex items-center gap-1">
-              <span className="w-4 border-t-2 border-rose-400 border-dashed inline-block"/>máx
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-4 border-t-2 border-emerald-500 border-dashed inline-block"/>mín
-            </span>
-          </div>
-        </div>
-        <MiniMlChart cycles={data.todayCycles} />
-      </div>
-
-      {/* ── Card mamá ── */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+      <div className="rounded-2xl p-4 bg-white/5 backdrop-blur-xl border border-white/10">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Estado mamá</p>
-          <a href="/mama/recuperacion" className="text-xs text-violet-500 font-medium">Registrar →</a>
+          <p className="text-xs font-semibold uppercase tracking-wider text-white/40">Ciclos del día</p>
+          <a href="/bebe/tomas" className="text-xs text-rose-400 font-semibold hover:text-rose-300 transition-colors">
+            Ver todos →
+          </a>
         </div>
-        {!momLog && !data.dbError ? (
-          <p className="text-sm text-slate-400">Sin registro de hoy.</p>
-        ) : momLog ? (
-          <div className="grid grid-cols-3 gap-3">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-violet-600 leading-none">
-                {painLevel > 0 ? painLevel : '—'}
-              </p>
-              <p className="text-[10px] text-slate-400 mt-1">dolor /10</p>
-              <div className={`mt-1 h-1 rounded-full mx-auto w-8 ${
-                !painLevel ? 'bg-slate-100' :
-                painLevel <= 3 ? 'bg-emerald-300' :
-                painLevel <= 6 ? 'bg-amber-300' : 'bg-red-400'
-              }`} />
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-cyan-600 leading-none">
-                {temperature > 0 ? temperature : '—'}
-              </p>
-              <p className="text-[10px] text-slate-400 mt-1">°C temp.</p>
-              <div className={`mt-1 h-1 rounded-full mx-auto w-8 ${
-                !temperature ? 'bg-slate-100' :
-                temperature < 37.5 ? 'bg-emerald-300' : 'bg-red-400'
-              }`} />
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-rose-500 leading-none">
-                {momLog.mood ? '⭐'.repeat(momLog.mood) : '—'}
-              </p>
-              <p className="text-[10px] text-slate-400 mt-1">ánimo</p>
-            </div>
-          </div>
-        ) : null}
-
-        {/* Próximo medicamento */}
-        {data.upcomingMeds.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-slate-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-slate-700">
-                  💊 {data.upcomingMeds[0].name}
-                </p>
-                <p className="text-xs text-slate-400">{data.upcomingMeds[0].dosage}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-bold text-violet-600">{formatHour(data.upcomingMeds[0].nextDue)}</p>
-                <p className="text-[10px] text-slate-400">{data.upcomingMeds[0].patientType === 'baby' ? 'Bebé' : 'Mamá'}</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── Acciones rápidas ── */}
-      <div>
-        <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-3">Acciones rápidas</p>
-        <div className="grid grid-cols-4 gap-2">
-          {[
-            { label: 'Ciclo',  icon: '🔄', href: '/ciclo',               bg: 'bg-emerald-50 border-emerald-100', text: 'text-emerald-600' },
-            { label: 'Pañal',  icon: '👶', href: '/bebe/panales',        bg: 'bg-sky-50 border-sky-100',       text: 'text-sky-600' },
-            { label: 'Sueño',  icon: '😴', href: '/bebe/sueno',          bg: 'bg-indigo-50 border-indigo-100', text: 'text-indigo-600' },
-            { label: 'Nota',   icon: '📝', href: '/bitacora',            bg: 'bg-amber-50 border-amber-100',   text: 'text-amber-600' },
-          ].map(({ label, icon, href, bg, text }) => (
-            <a
-              key={href}
-              href={href}
-              className={`flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl border-2 ${bg} transition-all duration-150 active:scale-95 shadow-sm`}
-            >
-              <span className="text-3xl leading-none">{icon}</span>
-              <span className={`text-[11px] font-semibold ${text}`}>{label}</span>
-            </a>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {data.todayCycles.map((c) => (
+            <CyclePill
+              key={c.cycleTime}
+              cycleTime={c.cycleTime}
+              status={c.status}
+              totalMl={c.totalMl}
+            />
           ))}
         </div>
+        <div className="flex gap-3 mt-3 text-[10px] text-white/25 flex-wrap">
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded bg-emerald-500/30 inline-block" />Completado
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded bg-rose-500/30 inline-block" />En curso
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded bg-red-500/30 inline-block" />Alerta
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded bg-white/10 inline-block" />Pendiente
+          </span>
+        </div>
       </div>
 
+      <div className="grid grid-cols-5 gap-3">
+        <div className="col-span-3 rounded-2xl p-4 bg-white/5 backdrop-blur-xl border border-white/10">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-white/40">ml por ciclo</p>
+            <span className="text-xs font-bold text-rose-400">{data.todayMlTotal} ml total</span>
+          </div>
+          {chartData.length > 0 ? (
+            <MlAreaChart data={chartData} />
+          ) : (
+            <div className="h-44 flex items-center justify-center">
+              <p className="text-xs text-white/20">Sin tomas registradas aún</p>
+            </div>
+          )}
+        </div>
+        <div className="col-span-2">
+          <MomCard
+            painLevel={painLevel}
+            temperature={temperature}
+            mood={mood}
+            nextMed={nextMed}
+          />
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-3">Acciones rápidas</p>
+        <QuickActions />
+      </div>
     </div>
   )
 }

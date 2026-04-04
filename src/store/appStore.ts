@@ -54,7 +54,7 @@ export const useAppStore = create<AppState>()(
       setLastSync: () => set({ lastSyncAt: new Date().toISOString() }),
     }),
     {
-      name: 'noecare-app',
+      name: 'mama-bebe-app',
       // Solo persiste la configuración, no el perfil completo (se recarga del servidor)
       partialize: (state) => ({
         babyId: state.babyId,

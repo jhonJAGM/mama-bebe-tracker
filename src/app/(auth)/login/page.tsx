@@ -9,8 +9,8 @@ export default function LoginPage() {
         {/* Header */}
         <div className="space-y-2">
           <div className="text-6xl">👶</div>
-          <h1 className="text-2xl font-bold text-rose-700">Noe·Care</h1>
-          <p className="text-sm text-rose-400">Cuidado inteligente para Noe</p>
+          <h1 className="text-2xl font-bold text-rose-700">Mamá & Bebé</h1>
+          <p className="text-sm text-rose-400">Seguimiento integral para tu familia</p>
         </div>
 
         {/* Divider */}

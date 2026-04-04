@@ -8,7 +8,17 @@
       "Bash(rm -rf tmpnext)",
       "Bash(npm install:*)",
       "Bash(npx shadcn@latest init --defaults --base-color neutral)",
-      "Bash(npx shadcn@latest init --defaults)"
+      "Bash(npx shadcn@latest init --defaults)",
+      "Bash(git checkout:*)",
+      "Bash(ls \"src/app/\\(dashboard\\)/bebe/tomas/page.tsx\")",
+      "Bash(git add:*)",
+      "Bash(/c/Users/jhona/Desarrollos/baby-care-tracking-app/.claude/worktrees/laughing-leakey/src/components/dashboard/QuickActions.tsx:*)",
+      "Bash(python3 /tmp/write_dashboard.py)",
+      "Bash(python write_page.py)",
+      "Bash(head -5 \"/c/Users/jhona/Desarrollos/baby-care-tracking-app/.claude/worktrees/laughing-leakey/src/app/\\(dashboard\\)/page.tsx\")",
+      "Bash(wc -l \"/c/Users/jhona/Desarrollos/baby-care-tracking-app/.claude/worktrees/laughing-leakey/src/app/\\(dashboard\\)/page.tsx\")",
+      "Bash(npm run:*)",
+      "Bash(npx next:*)"
     ]
   }
 }
