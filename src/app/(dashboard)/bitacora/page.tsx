@@ -97,10 +97,10 @@ export default function BitacoraPage() {
       )
       .join('')
     printWindow.document.write(`
-      <html><head><title>Bitácora Mamá & Bebé</title>
+      <html><head><title>Bitácora NoeCare</title>
       <style>body{font-family:sans-serif;padding:32px;max-width:700px;margin:0 auto}</style>
       </head><body>
-      <h1 style="font-size:24px;color:#e11d48;margin-bottom:8px">Bitácora Mamá & Bebé 👶</h1>
+      <h1 style="font-size:24px;color:#e11d48;margin-bottom:8px">Bitácora NoeCare 🌸</h1>
       <p style="color:#888;font-size:13px;margin-bottom:32px">Exportado el ${new Date().toLocaleDateString('es-CO')}</p>
       ${rows}
       </body></html>
