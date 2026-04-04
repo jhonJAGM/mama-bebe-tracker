@@ -1,6 +1,10 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  // output: 'standalone' genera un bundle autosuficiente para Docker / Railway
+  // Incluye solo las dependencias necesarias en .next/standalone/
+  output: 'standalone',
+
   async headers() {
     return [
       // Manifest y íconos PWA — caché larga, revalida en background

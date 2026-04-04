@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
+import ServiceWorkerRegistration from '@/components/shared/ServiceWorkerRegistration'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -65,7 +66,10 @@ export default function RootLayout({
         <meta name="apple-touch-fullscreen" content="yes" />
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <ServiceWorkerRegistration />
+        {children}
+      </body>
     </html>
   )
 }
