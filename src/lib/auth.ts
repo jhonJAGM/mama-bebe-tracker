@@ -1,3 +1,37 @@
-// NextAuth.js v5 configuration
-// TODO: Configurar Google OAuth con GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET
-export const { GET, POST, auth, signIn, signOut } = {} as any
+import NextAuth from 'next-auth'
+import Google from 'next-auth/providers/google'
+
+const { handlers, auth, signIn, signOut } = NextAuth({
+  providers: [
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      authorization: {
+        params: {
+          scope: 'openid email profile https://www.googleapis.com/auth/calendar',
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
+    }),
+  ],
+  pages: {
+    signIn: '/login',
+  },
+  callbacks: {
+    async jwt({ token, account }) {
+      if (account) {
+        token.accessToken = account.access_token
+        token.refreshToken = account.refresh_token
+      }
+      return token
+    },
+    async session({ session, token }) {
+      session.accessToken = token.accessToken as string | undefined
+      return session
+    },
+  },
+})
+
+export { handlers, auth, signIn, signOut }
+export const { GET, POST } = handlers

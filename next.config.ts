@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   // Incluye solo las dependencias necesarias en .next/standalone/
   output: 'standalone',
 
+  // instrumentationHook habilitado por defecto en Next.js 16 — no necesita config
+
   async headers() {
     return [
       // Manifest y íconos PWA — caché larga, revalida en background

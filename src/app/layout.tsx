@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Mamá & Bebé Tracker',
-  description: 'Seguimiento integral de bebé recién nacida y mamá post-cesárea',
+  title: 'NoeCare',
+  description: 'Cuidado inteligente para Noe',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'BebéApp',
+    title: 'NoeCare',
   },
   formatDetection: {
     telephone: false,
@@ -30,8 +30,8 @@ export const metadata: Metadata = {
     apple: '/icons/icon-192.svg',
   },
   openGraph: {
-    title: 'Mamá & Bebé Tracker',
-    description: 'Seguimiento de bebé y recuperación post-cesárea',
+    title: 'NoeCare',
+    description: 'Cuidado inteligente para Noe',
     type: 'website',
   },
 }

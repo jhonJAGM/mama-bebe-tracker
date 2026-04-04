@@ -1,85 +1,153 @@
 import { NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
-import Feeding from '@/models/Feeding'
+import Feeding, { CYCLE_TIMES } from '@/models/Feeding'
 
-// GET /api/feed?babyId=xxx&date=2024-01-15
-// Devuelve todas las tomas del dia especificado (o hoy si no se pasa date)
+// Devuelve la fecha a medianoche para agrupar por día
+function dayMidnight(dateParam?: string | null): Date {
+  const d = dateParam ? new Date(dateParam) : new Date()
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+// GET /api/feed?babyId=xxx&date=2025-04-01
+// Devuelve los 8 ciclos del día, incluyendo los no registrados (status: pending)
 export async function GET(request: Request) {
   try {
     await connectDB()
-
     const { searchParams } = new URL(request.url)
     const babyId = searchParams.get('babyId')
-    const dateParam = searchParams.get('date')
+    const date = dayMidnight(searchParams.get('date'))
 
     if (!babyId) {
       return NextResponse.json({ error: 'babyId es requerido' }, { status: 400 })
     }
 
-    const targetDate = dateParam ? new Date(dateParam) : new Date()
-    const startOfDay = new Date(targetDate)
-    startOfDay.setHours(0, 0, 0, 0)
-    const endOfDay = new Date(targetDate)
+    const endOfDay = new Date(date)
     endOfDay.setHours(23, 59, 59, 999)
 
     const feedings = await Feeding.find({
       babyId,
-      startTime: { $gte: startOfDay, $lte: endOfDay },
-    }).sort({ startTime: -1 })
+      date: { $gte: date, $lte: endOfDay },
+    }).lean()
 
-    return NextResponse.json({ feedings, count: feedings.length })
+    // Merge feedings con los 8 ciclos fijos
+    const cycles = CYCLE_TIMES.map((cycleTime) => {
+      const feeding = feedings.find((f) => f.cycleTime === cycleTime)
+      if (feeding) return { ...feeding, status: feedingStatus(feeding) }
+      return {
+        cycleTime,
+        status: 'pending',
+        breastMilkMl: 0,
+        complementMl: 0,
+        totalMl: 0,
+        diaperChanges: 0,
+        diaperType: 'none',
+      }
+    })
+
+    const todayTotalMl = feedings.reduce((acc, f) => acc + (f.totalMl ?? 0), 0)
+
+    return NextResponse.json({ cycles, todayTotalMl })
   } catch (error) {
     console.error('GET /api/feed error:', error)
     return NextResponse.json({ error: 'Error al obtener tomas' }, { status: 500 })
   }
 }
 
-// POST /api/feed
-// Body: { babyId, type, startTime, endTime?, durationMinutes?, amountMl?, notes? }
+function feedingStatus(f: any): string {
+  if (f.exceededLimit) return 'alert'
+  if (f.endTime) return 'completed'
+  if (f.startTime) return 'in_progress'
+  return 'pending'
+}
+
+// POST /api/feed — crea o actualiza el ciclo de un día específico
+// Body: { babyId, cycleTime, date?, breastMilkMl, complementMl, maxLimitMl, minLimitMl,
+//         diaperChanges, diaperType, observations, startTime?, endTime? }
 export async function POST(request: Request) {
   try {
     await connectDB()
-
     const body = await request.json()
-    const { babyId, type, startTime, endTime, durationMinutes, amountMl, notes } = body
+    const {
+      babyId,
+      cycleTime,
+      date,
+      breastMilkMl = 0,
+      complementMl = 0,
+      maxLimitMl = 120,
+      minLimitMl = 60,
+      diaperChanges = 0,
+      diaperType = 'none',
+      observations,
+      startTime,
+      endTime,
+    } = body
 
-    // Validacion
-    if (!babyId) {
-      return NextResponse.json({ error: 'babyId es requerido' }, { status: 400 })
+    if (!babyId || !cycleTime) {
+      return NextResponse.json({ error: 'babyId y cycleTime son requeridos' }, { status: 400 })
     }
-    if (!type || !['breast_left', 'breast_right', 'formula', 'mixed'].includes(type)) {
-      return NextResponse.json(
-        { error: 'type debe ser: breast_left, breast_right, formula o mixed' },
-        { status: 400 }
+    if (!CYCLE_TIMES.includes(cycleTime)) {
+      return NextResponse.json({ error: `cycleTime debe ser uno de: ${CYCLE_TIMES.join(', ')}` }, { status: 400 })
+    }
+
+    const dayDate = dayMidnight(date)
+    const totalMl = breastMilkMl + complementMl
+
+    // Calcular duración si hay start y end
+    let durationMinutes: number | undefined
+    if (startTime && endTime) {
+      durationMinutes = Math.round(
+        (new Date(endTime).getTime() - new Date(startTime).getTime()) / 60000
       )
     }
-    if (!startTime || isNaN(new Date(startTime).getTime())) {
-      return NextResponse.json({ error: 'startTime es requerido y debe ser una fecha valida' }, { status: 400 })
-    }
-    if (type === 'formula' && !amountMl) {
-      return NextResponse.json({ error: 'amountMl es requerido cuando type es formula' }, { status: 400 })
+
+    const exceededLimit = totalMl > maxLimitMl
+    const belowMinimum = totalMl > 0 && totalMl < minLimitMl
+
+    // Busca ciclo anterior para compensación
+    let compensationFromPrevious = false
+    if (belowMinimum) {
+      const prevIdx = CYCLE_TIMES.indexOf(cycleTime)
+      if (prevIdx > 0) {
+        const prevCycleTime = CYCLE_TIMES[prevIdx - 1]
+        const prevFeeding = await Feeding.findOne({ babyId, date: dayDate, cycleTime: prevCycleTime })
+        if (prevFeeding && prevFeeding.belowMinimum) {
+          compensationFromPrevious = true
+        }
+      }
     }
 
-    // Calcular duracion automaticamente si hay startTime y endTime
-    let calculatedDuration = durationMinutes
-    if (endTime && startTime && !durationMinutes) {
-      const ms = new Date(endTime).getTime() - new Date(startTime).getTime()
-      calculatedDuration = Math.round(ms / 60000)
-    }
+    const feeding = await Feeding.findOneAndUpdate(
+      { babyId, date: dayDate, cycleTime },
+      {
+        $set: {
+          breastMilkMl,
+          complementMl,
+          totalMl,
+          maxLimitMl,
+          minLimitMl,
+          exceededLimit,
+          belowMinimum,
+          compensationFromPrevious,
+          diaperChanges,
+          diaperType,
+          observations,
+          ...(startTime ? { startTime: new Date(startTime) } : {}),
+          ...(endTime ? { endTime: new Date(endTime) } : {}),
+          ...(durationMinutes != null ? { durationMinutes } : {}),
+        },
+        $setOnInsert: { babyId, date: dayDate, cycleTime },
+      },
+      { upsert: true, new: true }
+    )
 
-    const feeding = await Feeding.create({
-      babyId,
-      type,
-      startTime: new Date(startTime),
-      endTime: endTime ? new Date(endTime) : undefined,
-      durationMinutes: calculatedDuration,
-      amountMl,
-      notes,
-    })
+    const alerts: string[] = []
+    if (exceededLimit) alerts.push(`⚠️ Total (${totalMl} ml) supera el límite máximo (${maxLimitMl} ml)`)
+    if (belowMinimum) alerts.push(`⚠️ Total (${totalMl} ml) está por debajo del mínimo (${minLimitMl} ml)`)
 
-    return NextResponse.json({ feeding }, { status: 201 })
-  } catch (error) {
+    return NextResponse.json({ feeding, alerts }, { status: 201 })
+  } catch (error: any) {
     console.error('POST /api/feed error:', error)
-    return NextResponse.json({ error: 'Error al registrar toma' }, { status: 500 })
+    return NextResponse.json({ error: error.message ?? 'Error al registrar toma' }, { status: 500 })
   }
 }
