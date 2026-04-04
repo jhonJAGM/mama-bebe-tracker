@@ -4,20 +4,18 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
 interface NextFeedAlertProps {
-  lastFeedTime: Date | null
+  // ISO string o null — compatible con Server Components
+  lastFeedTimeISO: string | null
   feedIntervalHours?: number // intervalo configurado, por defecto 3h
 }
 
-// Calcula cuanto tiempo falta para la proxima toma y muestra una alerta visual.
-// - Verde: mas de 30 min
-// - Amarillo: menos de 30 min
-// - Rojo/urgente: es la hora o ya paso
 function getMinutesUntilNextFeed(
-  lastFeedTime: Date | null,
+  lastFeedTimeISO: string | null,
   intervalHours: number
 ): number | null {
-  if (!lastFeedTime) return null
-  const nextFeed = new Date(lastFeedTime.getTime() + intervalHours * 60 * 60 * 1000)
+  if (!lastFeedTimeISO) return null
+  const lastFeed = new Date(lastFeedTimeISO)
+  const nextFeed = new Date(lastFeed.getTime() + intervalHours * 60 * 60 * 1000)
   return Math.round((nextFeed.getTime() - Date.now()) / 60000)
 }
 
@@ -26,10 +24,11 @@ function formatTime(date: Date): string {
 }
 
 export default function NextFeedAlert({
-  lastFeedTime,
+  lastFeedTimeISO,
   feedIntervalHours = 3,
 }: NextFeedAlertProps) {
-  const minutesUntil = getMinutesUntilNextFeed(lastFeedTime, feedIntervalHours)
+  const lastFeedTime = lastFeedTimeISO ? new Date(lastFeedTimeISO) : null
+  const minutesUntil = getMinutesUntilNextFeed(lastFeedTimeISO, feedIntervalHours)
 
   if (lastFeedTime === null) {
     return (

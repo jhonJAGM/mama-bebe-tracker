@@ -1,129 +1,189 @@
+import { getDashboardData } from '@/lib/dashboard-data'
 import StatsCard from '@/components/dashboard/StatsCard'
 import NextFeedAlert from '@/components/dashboard/NextFeedAlert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
-// Datos de ejemplo hasta que se conecte auth y se lean de MongoDB
-const MOCK = {
-  babyName: 'Bebe',
-  lastFeed: new Date(Date.now() - 2.5 * 60 * 60 * 1000), // hace 2.5h
-  feedIntervalHours: 3,
-  diapersToday: 6,
-  sleepHoursToday: 14.5,
-  momPainLevel: 4,
-  momTemp: 36.8,
+const FEED_TYPE_LABELS: Record<string, string> = {
+  breast_left: 'Pecho izq.',
+  breast_right: 'Pecho der.',
+  formula: 'Biberón',
+  mixed: 'Mixto',
 }
 
-export default function DashboardPage() {
+function formatRelativeTime(isoString: string | null | undefined): string {
+  if (!isoString) return '—'
+  const diff = Math.round((Date.now() - new Date(isoString).getTime()) / 60000)
+  if (diff < 1) return 'Ahora'
+  if (diff < 60) return `Hace ${diff} min`
+  const h = Math.floor(diff / 60)
+  const m = diff % 60
+  return m > 0 ? `Hace ${h}h ${m}min` : `Hace ${h}h`
+}
+
+function formatHour(isoString: string | null | undefined): string {
+  if (!isoString) return '—'
+  return new Date(isoString).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+}
+
+function computeNextFeedTime(lastFeedISO: string | null, intervalHours = 3): string {
+  if (!lastFeedISO) return '—'
+  const next = new Date(new Date(lastFeedISO).getTime() + intervalHours * 3600000)
+  return next.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+}
+
+// Server Component — lee directamente de MongoDB en cada request
+export default async function DashboardPage() {
+  const data = await getDashboardData()
+
   const today = new Date().toLocaleDateString('es-ES', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   })
 
+  const lastFeedISO = data.lastFeeding
+    ? new Date((data.lastFeeding as any).startTime).toISOString()
+    : null
+
+  const momLog = data.momLog as any
+  const painLevel: number = momLog?.painLevel ?? 0
+  const temperature: number = momLog?.temperature ?? 0
+
   return (
     <div className="space-y-5 pb-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold capitalize">Hola 👋</h1>
+          <h1 className="text-2xl font-bold capitalize">
+            Hola 👋
+          </h1>
           <p className="text-sm text-muted-foreground capitalize">{today}</p>
         </div>
         <Badge variant="outline" className="text-xs">
-          {MOCK.babyName}
+          {(data.baby as any)?.name ?? 'Sin perfil'}
         </Badge>
       </div>
 
-      {/* Alerta proxima toma — siempre al tope */}
+      {/* Alerta si MongoDB no está disponible */}
+      {data.dbError && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+          ⚠️ Sin conexión a la base de datos. Configura <code className="font-mono text-xs">MONGODB_URI</code> en <code className="font-mono text-xs">.env.local</code>
+        </div>
+      )}
+
+      {/* Alerta próxima toma */}
       <NextFeedAlert
-        lastFeedTime={MOCK.lastFeed}
-        feedIntervalHours={MOCK.feedIntervalHours}
+        lastFeedTimeISO={lastFeedISO}
+        feedIntervalHours={3}
       />
 
-      {/* Grid de estadisticas del bebe */}
+      {/* Stats bebe */}
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Bebe hoy
+          Bebé hoy
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatsCard
-            title="Ultima toma"
-            value="Hace 2.5h"
-            subtitle="Pecho izquierdo · 15 min"
+            title="Última toma"
+            value={formatRelativeTime(lastFeedISO)}
+            subtitle={
+              lastFeedISO
+                ? `${FEED_TYPE_LABELS[(data.lastFeeding as any)?.type] ?? ''} · ${formatHour(lastFeedISO)}`
+                : 'Sin registros hoy'
+            }
             icon="🍼"
-            badge={{ label: 'Normal', variant: 'secondary' }}
+            badge={{ label: lastFeedISO ? 'Registrado' : 'Sin datos', variant: 'secondary' }}
           />
           <StatsCard
-            title="Panales"
-            value={`${MOCK.diapersToday}`}
-            subtitle="4 pipi · 2 caca"
+            title="Pañales"
+            value={String(data.diaperSummary?.total ?? 0)}
+            subtitle={
+              data.diaperSummary
+                ? `${data.diaperSummary.pee} pipi · ${data.diaperSummary.poop} caca`
+                : 'Sin registros'
+            }
             icon="👶"
-            badge={{ label: 'Bien', variant: 'secondary' }}
+            badge={{ label: 'Hoy', variant: 'secondary' }}
           />
           <StatsCard
-            title="Sueno"
-            value={`${MOCK.sleepHoursToday}h`}
-            subtitle="Ultima siesta: 11:00"
+            title="Sueño"
+            value={`${data.sleepSummary?.totalHours ?? 0}h`}
+            subtitle={
+              data.sleepSummary?.lastSleepStart
+                ? `Última siesta: ${formatHour(data.sleepSummary.lastSleepStart)}`
+                : 'Sin registros hoy'
+            }
             icon="😴"
-            badge={{ label: 'Bueno', variant: 'secondary' }}
+            badge={{ label: 'Acumulado', variant: 'secondary' }}
           />
           <StatsCard
-            title="Proxima toma"
-            value="16:30"
-            subtitle={`En ${MOCK.feedIntervalHours}h de intervalo`}
+            title="Próxima toma"
+            value={computeNextFeedTime(lastFeedISO)}
+            subtitle="Intervalo de 3h"
             icon="⏰"
-            highlight
+            highlight={!!lastFeedISO}
           />
         </div>
       </section>
 
-      {/* Grid estado mama */}
+      {/* Stats mamá */}
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Mama hoy
+          Mamá hoy
         </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <StatsCard
-            title="Dolor"
-            value={`${MOCK.momPainLevel}/10`}
-            subtitle="Herida cesarea"
-            icon="💊"
-            badge={{
-              label: MOCK.momPainLevel <= 3 ? 'Leve' : MOCK.momPainLevel <= 6 ? 'Moderado' : 'Intenso',
-              variant: MOCK.momPainLevel <= 3 ? 'secondary' : MOCK.momPainLevel <= 6 ? 'default' : 'destructive',
-            }}
-          />
-          <StatsCard
-            title="Temperatura"
-            value={`${MOCK.momTemp}°C`}
-            subtitle="Normal < 37.5°C"
-            icon="🌡️"
-            badge={{
-              label: MOCK.momTemp < 37.5 ? 'Normal' : 'Fiebre',
-              variant: MOCK.momTemp < 37.5 ? 'secondary' : 'destructive',
-            }}
-          />
-          <StatsCard
-            title="Medicamentos"
-            value="2 activos"
-            subtitle="Proximo: Ibuprofeno 18:00"
-            icon="💉"
-            badge={{ label: 'Al dia', variant: 'secondary' }}
-          />
-        </div>
+        {!momLog && !data.dbError && (
+          <p className="text-sm text-muted-foreground">
+            Sin registro de hoy.{' '}
+            <a href="/mama/recuperacion" className="underline">
+              Agregar
+            </a>
+          </p>
+        )}
+        {momLog && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <StatsCard
+              title="Dolor"
+              value={painLevel ? `${painLevel}/10` : '—'}
+              subtitle={momLog.painZone ?? 'Sin zona'}
+              icon="💊"
+              badge={{
+                label: !painLevel ? 'Sin dato' : painLevel <= 3 ? 'Leve' : painLevel <= 6 ? 'Moderado' : 'Intenso',
+                variant: !painLevel ? 'outline' : painLevel <= 3 ? 'secondary' : painLevel <= 6 ? 'default' : 'destructive',
+              }}
+            />
+            <StatsCard
+              title="Temperatura"
+              value={temperature ? `${temperature}°C` : '—'}
+              subtitle="Normal < 37.5°C"
+              icon="🌡️"
+              badge={{
+                label: !temperature ? 'Sin dato' : temperature < 37.5 ? 'Normal' : 'Fiebre',
+                variant: !temperature ? 'outline' : temperature < 37.5 ? 'secondary' : 'destructive',
+              }}
+            />
+            <StatsCard
+              title="Estado ánimo"
+              value={momLog.mood ? '⭐'.repeat(momLog.mood) : '—'}
+              subtitle={formatHour(momLog.date?.toISOString?.() ?? momLog.date)}
+              icon="❤️"
+              badge={{ label: 'Último registro', variant: 'outline' }}
+            />
+          </div>
+        )}
       </section>
 
-      {/* Acciones rapidas */}
+      {/* Acciones rápidas */}
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Acciones rapidas
+          Acciones rápidas
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: 'Registrar toma', icon: '🍼', href: '/bebe/tomas' },
-            { label: 'Cambio panal', icon: '👶', href: '/bebe/panales' },
-            { label: 'Inicio sueno', icon: '😴', href: '/bebe/sueno' },
-            { label: 'Estado mama', icon: '❤️', href: '/mama/recuperacion' },
+            { label: 'Cambio pañal', icon: '👶', href: '/bebe/panales' },
+            { label: 'Inicio sueño', icon: '😴', href: '/bebe/sueno' },
+            { label: 'Estado mamá', icon: '❤️', href: '/mama/recuperacion' },
           ].map(({ label, icon, href }) => (
             <a key={href} href={href}>
               <Card className="cursor-pointer transition-shadow hover:shadow-md active:scale-95">
@@ -137,38 +197,47 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* Proximos medicamentos */}
-      <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Proximos medicamentos
-        </h2>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Hoy</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {[
-              { name: 'Ibuprofeno 400mg', time: '18:00', patient: 'Mama', soon: true },
-              { name: 'Vitamina D · 5 gotas', time: '20:00', patient: 'Bebe', soon: false },
-            ].map(({ name, time, patient, soon }) => (
-              <div
-                key={name}
-                className={`flex items-center justify-between rounded-lg px-3 py-2 ${
-                  soon ? 'bg-amber-50 dark:bg-amber-950/20' : 'bg-muted/50'
-                }`}
-              >
-                <div>
-                  <p className="text-sm font-medium">{name}</p>
-                  <p className="text-xs text-muted-foreground">{patient}</p>
-                </div>
-                <Badge variant={soon ? 'default' : 'outline'} className="text-xs">
-                  {time}
-                </Badge>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </section>
+      {/* Próximos medicamentos */}
+      {data.upcomingMeds.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Próximos medicamentos
+          </h2>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Hoy</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {data.upcomingMeds.map((med) => {
+                const minutesUntil = Math.round(
+                  (new Date(med.nextDue).getTime() - Date.now()) / 60000
+                )
+                const soon = minutesUntil <= 60
+                return (
+                  <div
+                    key={`${med.name}-${med.nextDue}`}
+                    className={`flex items-center justify-between rounded-lg px-3 py-2 ${
+                      soon ? 'bg-amber-50 dark:bg-amber-950/20' : 'bg-muted/50'
+                    }`}
+                  >
+                    <div>
+                      <p className="text-sm font-medium">
+                        {med.name} · {med.dosage}
+                      </p>
+                      <p className="text-xs text-muted-foreground capitalize">
+                        {med.patientType === 'baby' ? 'Bebé' : 'Mamá'}
+                      </p>
+                    </div>
+                    <Badge variant={soon ? 'default' : 'outline'} className="text-xs">
+                      {formatHour(med.nextDue)}
+                    </Badge>
+                  </div>
+                )
+              })}
+            </CardContent>
+          </Card>
+        </section>
+      )}
     </div>
   )
 }
