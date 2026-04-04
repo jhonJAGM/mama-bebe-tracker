@@ -5,6 +5,11 @@ const nextConfig: NextConfig = {
   // Incluye solo las dependencias necesarias en .next/standalone/
   output: 'standalone',
 
+  // Permite ejecutar código al iniciar el servidor (ej: cron jobs)
+  experimental: {
+    instrumentationHook: true,
+  },
+
   async headers() {
     return [
       // Manifest y íconos PWA — caché larga, revalida en background

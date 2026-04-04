@@ -22,3 +22,34 @@ export async function sendWhatsAppMessage(phone: string, message: string) {
 
   return response.json()
 }
+
+// Alerta: próxima toma de leche
+export async function sendFeedingAlert(phone: string, lastFeedISO: string) {
+  const last = new Date(lastFeedISO)
+  const next = new Date(last.getTime() + 3 * 60 * 60 * 1000)
+  const hora = next.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Bogota' })
+  return sendWhatsAppMessage(phone, `👶 *Próxima toma:* ${hora}\nHan pasado 3 horas desde la última alimentación.`)
+}
+
+// Alerta: medicamento pendiente
+export async function sendMedAlert(phone: string, medName: string, dosage: string) {
+  return sendWhatsAppMessage(phone, `💊 *Medicamento pendiente:* ${medName}\nDosis: ${dosage}\n¡Es hora de tomarlo!`)
+}
+
+// Resumen diario (8am)
+export async function sendDailySummary(
+  phone: string,
+  summary: { feedingsCount: number; diapersCount: number; sleepMinutes: number; momPain: number | null }
+) {
+  const sleepH = Math.floor(summary.sleepMinutes / 60)
+  const sleepM = summary.sleepMinutes % 60
+  const painText = summary.momPain != null ? `${summary.momPain}/10` : 'sin registro'
+  const msg = [
+    `📊 *Resumen de ayer*`,
+    `🍼 Tomas: ${summary.feedingsCount}`,
+    `🚼 Pañales: ${summary.diapersCount}`,
+    `😴 Sueño bebé: ${sleepH}h ${sleepM}m`,
+    `💛 Dolor mamá: ${painText}`,
+  ].join('\n')
+  return sendWhatsAppMessage(phone, msg)
+}
