@@ -1,3 +1,5 @@
+'use client'
+
 // Página servida por el SW cuando no hay conexión y la página solicitada
 // no está en caché. También se precarga en el install del SW.
 export default function OfflinePage() {

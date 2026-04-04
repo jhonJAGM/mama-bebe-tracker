@@ -5,10 +5,7 @@ const nextConfig: NextConfig = {
   // Incluye solo las dependencias necesarias en .next/standalone/
   output: 'standalone',
 
-  // Permite ejecutar código al iniciar el servidor (ej: cron jobs)
-  experimental: {
-    instrumentationHook: true,
-  },
+  // instrumentationHook habilitado por defecto en Next.js 16 — no necesita config
 
   async headers() {
     return [

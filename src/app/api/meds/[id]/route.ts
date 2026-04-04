@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import Medication from '@/models/Medication'
 
+// Next.js 16: params es Promise<Params>
+type Context = { params: Promise<{ id: string }> }
+
 // PATCH /api/meds/:id — marcar medicamento como tomado ahora
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: Request, context: Context) {
   try {
     await connectDB()
-    const { id } = params
+    const { id } = await context.params
     const med = await Medication.findById(id)
     if (!med) {
       return NextResponse.json({ error: 'Medicamento no encontrado' }, { status: 404 })
@@ -28,17 +28,11 @@ export async function PATCH(
 }
 
 // DELETE /api/meds/:id — desactivar medicamento (soft delete)
-export async function DELETE(
-  _request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(_request: Request, context: Context) {
   try {
     await connectDB()
-    const med = await Medication.findByIdAndUpdate(
-      params.id,
-      { active: false },
-      { new: true }
-    )
+    const { id } = await context.params
+    const med = await Medication.findByIdAndUpdate(id, { active: false }, { new: true })
     if (!med) {
       return NextResponse.json({ error: 'Medicamento no encontrado' }, { status: 404 })
     }
