@@ -1,5 +1,6 @@
 import { getDashboardData } from '@/lib/dashboard-data'
 import HeroCountdown from '@/components/dashboard/HeroCountdown'
+import MiniMlChart from '@/components/dashboard/MiniMlChart'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function formatHour(iso: string | null | undefined): string {
@@ -169,6 +170,22 @@ export default async function DashboardPage() {
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-emerald-400 inline-block"/>Completo</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-red-400 inline-block"/>Alerta</span>
         </div>
+      </div>
+
+      {/* ── Mini curva de ml ── */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Curva de leche</p>
+          <div className="flex gap-3 text-[10px] text-slate-400">
+            <span className="flex items-center gap-1">
+              <span className="w-4 border-t-2 border-rose-400 border-dashed inline-block"/>máx
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-4 border-t-2 border-emerald-500 border-dashed inline-block"/>mín
+            </span>
+          </div>
+        </div>
+        <MiniMlChart cycles={data.todayCycles} />
       </div>
 
       {/* ── Card mamá ── */}

@@ -20,12 +20,14 @@ export async function PATCH(request: Request, context: Context) {
 
     if (action === 'start') {
       feeding.startTime = new Date()
+      feeding.status = 'in_progress'
       await feeding.save()
       return NextResponse.json({ feeding })
     }
 
     if (action === 'end') {
       feeding.endTime = new Date()
+      feeding.status = 'completed'
       if (feeding.startTime) {
         feeding.durationMinutes = Math.round(
           (feeding.endTime.getTime() - feeding.startTime.getTime()) / 60000
