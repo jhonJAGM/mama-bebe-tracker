@@ -28,6 +28,10 @@ export default function HeroCountdown({ nextCycleISO, lastFeedingCycle, lastFeed
   const s = totalSec % 60
 
   const isOverdue = diff === 0
+  const cycleSeconds = 3 * 3600
+  const elapsed = cycleSeconds - totalSec
+  const progress = Math.min(100, Math.round((elapsed / cycleSeconds) * 100))
+
   const nextTime = new Date(nextCycleISO).toLocaleTimeString('es-CO', {
     hour: '2-digit',
     minute: '2-digit',
@@ -35,43 +39,60 @@ export default function HeroCountdown({ nextCycleISO, lastFeedingCycle, lastFeed
   })
 
   return (
-    <div className={`rounded-2xl p-5 shadow-md ${isOverdue
-      ? 'bg-gradient-to-br from-red-500 to-rose-600'
-      : 'bg-gradient-to-br from-rose-500 to-pink-500'
-    } text-white`}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider opacity-80">
-            {isOverdue ? '⚠️ Toma retrasada' : '⏰ Próxima toma'}
-          </p>
-          <p className="text-2xl font-bold mt-1">{nextTime}</p>
-          {lastFeedingCycle && (
-            <p className="text-xs opacity-70 mt-0.5">
-              Último ciclo: {lastFeedingCycle}
-              {lastFeedingMl != null && lastFeedingMl > 0 ? ` · ${lastFeedingMl} ml` : ''}
-            </p>
-          )}
-        </div>
-        {/* Countdown */}
-        <div className={`rounded-2xl px-4 py-3 text-center ${isOverdue ? 'bg-white/20' : 'bg-white/15'}`}>
-          <div className="font-mono text-3xl font-bold tracking-tight leading-none">
-            {h > 0 ? `${pad(h)}:` : ''}{pad(m)}:{pad(s)}
-          </div>
-          <p className="text-[10px] opacity-70 mt-1 uppercase tracking-wide">
-            {isOverdue ? 'Ahora!' : 'restante'}
-          </p>
+    <div className={`relative overflow-hidden rounded-3xl p-6 border transition-all duration-500 ${
+      isOverdue
+        ? 'bg-gradient-to-br from-red-500/25 to-rose-600/15 border-red-500/30'
+        : 'bg-gradient-to-br from-rose-500/20 to-pink-600/10 border-rose-500/20'
+    }`}>
+      <div className={`absolute -top-10 -right-10 w-48 h-48 rounded-full blur-3xl opacity-20 pointer-events-none ${isOverdue ? 'bg-red-500' : 'bg-rose-500'}`} />
+
+      <div className="relative flex items-center justify-between mb-4">
+        <span className="text-xs font-semibold uppercase tracking-widest text-white/50">
+          {isOverdue ? '⚠️ Toma retrasada' : 'Próxima toma en'}
+        </span>
+        <div className="flex items-center gap-1.5 bg-red-500/20 border border-red-500/30 rounded-full px-2.5 py-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+          <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider">LIVE</span>
         </div>
       </div>
 
-      {/* Barra de progreso (invierte: llena = falta mucho, vacía = ya!) */}
-      {!isOverdue && (
-        <div className="mt-3 h-1.5 bg-white/20 rounded-full overflow-hidden">
+      <div className="relative text-center my-2">
+        <div className={`font-black tabular-nums tracking-tight leading-none ${isOverdue ? 'text-red-300 text-6xl' : 'text-white text-7xl'}`}>
+          {h > 0 ? `${pad(h)}:` : ''}{pad(m)}:{pad(s)}
+        </div>
+        <p className="text-sm text-white/40 mt-2 font-medium">Ciclo 3:00h · siguiente a las {nextTime}</p>
+      </div>
+
+      <div className="relative mt-5">
+        <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
           <div
-            className="h-full bg-white rounded-full transition-all duration-1000"
-            style={{ width: `${Math.min(100, 100 - (totalSec / (3 * 3600)) * 100)}%` }}
+            className={`h-full rounded-full transition-all duration-1000 ${isOverdue ? 'bg-red-400' : 'bg-gradient-to-r from-rose-400 to-pink-500'}`}
+            style={{ width: `${progress}%` }}
           />
         </div>
-      )}
+        <div className="flex justify-between text-[10px] text-white/25 mt-1.5">
+          <span>0 min</span>
+          <span>{progress}% del ciclo</span>
+          <span>3h</span>
+        </div>
+      </div>
+
+      <div className="relative mt-4 flex items-center justify-between gap-3">
+        {lastFeedingCycle ? (
+          <div className="inline-flex items-center gap-2 bg-white/[0.08] border border-white/10 rounded-full px-3 py-1.5 text-[11px] text-white/60">
+            <span>🍼</span>
+            <span>Última: {lastFeedingCycle}{lastFeedingMl != null && lastFeedingMl > 0 ? ` · ${lastFeedingMl} ml` : ''}</span>
+          </div>
+        ) : (
+          <span />
+        )}
+        <a
+          href="/bebe/tomas"
+          className={`shrink-0 text-xs font-semibold px-4 py-2 rounded-2xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg ${isOverdue ? 'bg-gradient-to-r from-red-500 to-rose-600 shadow-red-500/25 text-white' : 'bg-gradient-to-r from-rose-500 to-pink-600 shadow-rose-500/25 text-white hover:from-rose-400 hover:to-pink-500'}`}
+        >
+          Registrar toma →
+        </a>
+      </div>
     </div>
   )
 }
