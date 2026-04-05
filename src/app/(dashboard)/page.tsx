@@ -59,7 +59,7 @@ export default async function DashboardPage() {
         <div className="flex items-center gap-2">
           <span className="text-xl">🌸</span>
           <span className="text-base font-bold text-white tracking-tight">
-            mama<span className="text-rose-400">·</span>bebe
+            Noe<span className="text-rose-400">·</span>Care
           </span>
         </div>
         <div className="flex items-center gap-2">

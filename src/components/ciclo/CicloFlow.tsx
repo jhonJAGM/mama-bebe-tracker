@@ -108,6 +108,13 @@ function vibrate(ms = 50) {
 export default function CicloFlow() {
   const router = useRouter()
   const babyId = useAppStore((s) => s.babyId)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // BabyProvider already fetches — wait 1.5s for it to settle
+    const t = setTimeout(() => setLoading(false), 1500)
+    return () => clearTimeout(t)
+  }, [])
 
   const [state, setState] = useState<CicloState>(INITIAL_STATE)
 
@@ -276,6 +283,39 @@ export default function CicloFlow() {
       feed: { ...prev.feed, leftActive: false, rightActive: false },
     }))
     vibrate(80)
+  }
+
+  // ── Loading / onboarding gates ───────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-[#0a0a0f] flex items-center justify-center">
+        <div className="text-white/40 text-lg">Cargando...</div>
+      </div>
+    )
+  }
+
+  if (!babyId) {
+    return (
+      <div className="fixed inset-0 bg-[#0a0a0f] text-white flex flex-col items-center justify-center gap-6 px-8">
+        <div className="text-5xl">🌸</div>
+        <h1 className="text-2xl font-bold text-center">Configura el perfil de Noe</h1>
+        <p className="text-white/50 text-center">No se encontró un perfil de bebé. Contacta al administrador o verifica la conexión.</p>
+        <button
+          onClick={() => {
+            setLoading(true)
+            fetch('/api/baby')
+              .then(r => r.json())
+              .then(d => { if (d.baby) useAppStore.getState().setBaby(d.baby) })
+              .catch(console.error)
+              .finally(() => setTimeout(() => setLoading(false), 500))
+          }}
+          className="min-h-[64px] w-full rounded-3xl bg-rose-500 text-xl font-bold"
+        >
+          🔄 Reintentar
+        </button>
+      </div>
+    )
   }
 
   // ── Progress ────────────────────────────────────────────────────────────
