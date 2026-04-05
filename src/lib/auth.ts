@@ -1,8 +1,10 @@
 import NextAuth from 'next-auth'
 import Google from 'next-auth/providers/google'
 
-const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [
+const providers = []
+
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  providers.push(
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -13,8 +15,12 @@ const { handlers, auth, signIn, signOut } = NextAuth({
           prompt: 'consent',
         },
       },
-    }),
-  ],
+    })
+  )
+}
+
+const { handlers, auth, signIn, signOut } = NextAuth({
+  providers,
   pages: {
     signIn: '/login',
   },
