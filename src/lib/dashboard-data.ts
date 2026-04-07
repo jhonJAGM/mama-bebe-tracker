@@ -6,19 +6,26 @@ import Medication from '@/models/Medication'
 import MomLog from '@/models/MomLog'
 import Baby from '@/models/Baby'
 
+// Colombia = UTC-5. Calcula medianoche y fin del día en hora local Colombia,
+// devuelve fechas UTC para comparar contra los documentos de MongoDB.
+const COL_OFFSET_MS = -5 * 60 * 60 * 1000
+
 function todayRange() {
-  const start = new Date()
-  start.setHours(0, 0, 0, 0)
-  const end = new Date()
-  end.setHours(23, 59, 59, 999)
+  // Hora actual ajustada a Colombia
+  const nowLocal = new Date(Date.now() + COL_OFFSET_MS)
+  // Medianoche Colombia en UTC
+  const start = new Date(
+    Date.UTC(nowLocal.getUTCFullYear(), nowLocal.getUTCMonth(), nowLocal.getUTCDate(), 5, 0, 0, 0)
+  ) // 00:00 COL = 05:00 UTC
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1)
   return { start, end }
 }
 
-// Próximo ciclo a partir de ahora
+// Próximo ciclo a partir de ahora (en hora Colombia)
 function getNextCycleISO(): string {
-  const now = new Date()
-  const h = now.getHours()
-  const m = now.getMinutes()
+  const nowLocal = new Date(Date.now() + COL_OFFSET_MS)
+  const h = nowLocal.getUTCHours()
+  const m = nowLocal.getUTCMinutes()
   const nowMin = h * 60 + m
 
   const cycleMins = CYCLE_TIMES.map((ct) => {
@@ -26,18 +33,23 @@ function getNextCycleISO(): string {
     return ch * 60 + cm
   })
 
-  // Próximo ciclo mayor al actual (si hay)
+  // Convierte minutos Colombia → Date UTC
+  function colMinToDate(colMin: number, dayOffset = 0): Date {
+    const colH = Math.floor(colMin / 60)
+    const colM = colMin % 60
+    // Medianoche Colombia del día de hoy en UTC
+    const todayMidnightUTC = new Date(
+      Date.UTC(nowLocal.getUTCFullYear(), nowLocal.getUTCMonth(), nowLocal.getUTCDate() + dayOffset, 5, 0, 0, 0)
+    )
+    return new Date(todayMidnightUTC.getTime() + (colH * 60 + colM) * 60 * 1000)
+  }
+
   const nextMin = cycleMins.find((cm) => cm > nowMin)
   if (nextMin != null) {
-    const next = new Date()
-    next.setHours(Math.floor(nextMin / 60), nextMin % 60, 0, 0)
-    return next.toISOString()
+    return colMinToDate(nextMin).toISOString()
   }
-  // Si ya pasaron todos los ciclos del día, el siguiente es 06:00 del día siguiente
-  const next = new Date()
-  next.setDate(next.getDate() + 1)
-  next.setHours(6, 0, 0, 0)
-  return next.toISOString()
+  // Si ya pasaron todos los ciclos del día, el siguiente es 06:00 Colombia del día siguiente
+  return colMinToDate(6 * 60, 1).toISOString()
 }
 
 export async function getDashboardData() {
@@ -55,7 +67,13 @@ export async function getDashboardData() {
       todayMlTotal: 0,
       feedingsToday: 0,
       nextCycleISO: getNextCycleISO(),
-      todayCycles: [] as { cycleTime: string; status: string; totalMl: number }[],
+      todayCycles: [] as {
+        cycleTime: string; status: string;
+        wakeTime: string | null; startTime: string | null; endTime: string | null;
+        durationMinutes: number | null;
+        breastMilkMl: number; complementMl: number; totalMl: number;
+        exceededLimit: boolean; belowMinimum: boolean;
+      }[],
     }
   }
 
@@ -93,7 +111,7 @@ export async function getDashboardData() {
       })[0]
     : null
 
-  // Timeline de ciclos para el dashboard
+  // Timeline de ciclos para el dashboard — incluye todos los campos HD/HI/HF/LM/C
   const todayCycles = CYCLE_TIMES.map((ct) => {
     const f = feedings.find((x) => x.cycleTime === ct)
     let status = 'pending'
@@ -101,8 +119,21 @@ export async function getDashboardData() {
       if (f.exceededLimit) status = 'alert'
       else if (f.endTime) status = 'completed'
       else if (f.startTime) status = 'in_progress'
+      else if (f.wakeTime) status = 'awake'
     }
-    return { cycleTime: ct, status, totalMl: f?.totalMl ?? 0 }
+    return {
+      cycleTime: ct,
+      status,
+      wakeTime:        f?.wakeTime  ? new Date(f.wakeTime).toISOString()  : null,
+      startTime:       f?.startTime ? new Date(f.startTime).toISOString() : null,
+      endTime:         f?.endTime   ? new Date(f.endTime).toISOString()   : null,
+      durationMinutes: f?.durationMinutes ?? null,
+      breastMilkMl:    f?.breastMilkMl ?? 0,
+      complementMl:    f?.complementMl ?? 0,
+      totalMl:         f?.totalMl ?? 0,
+      exceededLimit:   f?.exceededLimit ?? false,
+      belowMinimum:    f?.belowMinimum ?? false,
+    }
   })
 
   return {

@@ -1,8 +1,33 @@
 import NextAuth from 'next-auth'
 import Google from 'next-auth/providers/google'
+import Credentials from 'next-auth/providers/credentials'
 
 const providers = []
 
+// Siempre disponible: usuario/contraseña familiar
+providers.push(
+  Credentials({
+    credentials: {
+      username: { label: 'Usuario', type: 'text' },
+      password: { label: 'Contraseña', type: 'password' },
+    },
+    authorize(credentials) {
+      const validUser = process.env.APP_USERNAME ?? 'familiaGM'
+      const validPass = process.env.APP_PASSWORD ?? 'NOAH2026'
+      if (
+        typeof credentials?.username === 'string' &&
+        typeof credentials?.password === 'string' &&
+        credentials.username === validUser &&
+        credentials.password === validPass
+      ) {
+        return { id: '1', name: 'Familia GM', email: 'familia@noecare.app' }
+      }
+      return null
+    },
+  })
+)
+
+// Google OAuth opcional — solo si están configuradas las env vars
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   providers.push(
     Google({
@@ -23,6 +48,9 @@ const { handlers, auth, signIn, signOut } = NextAuth({
   providers,
   pages: {
     signIn: '/login',
+  },
+  session: {
+    strategy: 'jwt',
   },
   callbacks: {
     async jwt({ token, account }) {

@@ -2,6 +2,17 @@ import { NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import Feeding, { CYCLE_TIMES } from '@/models/Feeding'
 
+const COL_OFFSET_MS = -5 * 60 * 60 * 1000
+
+function dayMidnightCOL(dateParam?: string | null): Date {
+  if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+    const [y, mo, d] = dateParam.split('-').map(Number)
+    return new Date(Date.UTC(y, mo - 1, d, 5, 0, 0, 0))
+  }
+  const nowLocal = new Date((dateParam ? new Date(dateParam).getTime() : Date.now()) + COL_OFFSET_MS)
+  return new Date(Date.UTC(nowLocal.getUTCFullYear(), nowLocal.getUTCMonth(), nowLocal.getUTCDate(), 5, 0, 0, 0))
+}
+
 type Context = { params: Promise<{ id: string }> }
 
 // PATCH /api/feed/:id — acciones: start | end | update
@@ -37,6 +48,7 @@ export async function PATCH(request: Request, context: Context) {
 
     // action === 'update' (o sin action) — actualiza campos del formulario
     const {
+      wakeTime,
       breastMilkMl,
       complementMl,
       maxLimitMl,
@@ -48,6 +60,7 @@ export async function PATCH(request: Request, context: Context) {
       endTime,
     } = body
 
+    if (wakeTime)        feeding.wakeTime = new Date(wakeTime)
     if (breastMilkMl != null) feeding.breastMilkMl = breastMilkMl
     if (complementMl != null) feeding.complementMl = complementMl
     if (maxLimitMl != null) feeding.maxLimitMl = maxLimitMl
@@ -109,8 +122,7 @@ export async function POST(request: Request, context: Context) {
       return NextResponse.json({ error: 'cycleTime inválido' }, { status: 400 })
     }
 
-    const dayDate = date ? new Date(date) : new Date()
-    dayDate.setHours(0, 0, 0, 0)
+    const dayDate = dayMidnightCOL(date)
 
     const feeding = await Feeding.findOneAndUpdate(
       { babyId, date: dayDate, cycleTime },

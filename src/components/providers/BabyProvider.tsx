@@ -1,19 +1,35 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useAppStore } from '@/store/appStore'
+import OnboardingModal from '@/components/shared/OnboardingModal'
 
 export default function BabyProvider({ children }: { children: React.ReactNode }) {
-  const { setBaby } = useAppStore()
+  const { setBaby, baby } = useAppStore()
+  const [noBaby, setNoBaby] = useState(false)
 
   useEffect(() => {
-    // Siempre sincronizar con la BD al montar (por si localStorage expiró)
     fetch('/api/baby')
       .then(r => r.json())
       .then(data => {
-        if (data.baby) setBaby(data.baby)
+        if (data.baby) {
+          setBaby(data.baby)
+          setNoBaby(false)
+        } else {
+          setNoBaby(true)
+        }
       })
-      .catch(console.error)
+      .catch(() => {
+        // Si falla la red, no forzar onboarding (puede ser offline)
+      })
   }, [setBaby])
 
-  return <>{children}</>
+  // Si ya tenemos baby en el store, no mostrar onboarding
+  const showOnboarding = noBaby && !baby
+
+  return (
+    <>
+      {showOnboarding && <OnboardingModal />}
+      {children}
+    </>
+  )
 }

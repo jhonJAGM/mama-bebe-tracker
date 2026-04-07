@@ -2,11 +2,26 @@ import { NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import Feeding, { CYCLE_TIMES } from '@/models/Feeding'
 
-// Devuelve la fecha a medianoche para agrupar por día
+// Devuelve medianoche Colombia (UTC-5) como Date UTC, para agrupar por día local.
+// Si se pasa una fecha ISO completa (desde el cliente), se usa tal cual.
+// Si se pasa solo "YYYY-MM-DD" o nada, se calcula en hora Colombia.
+const COL_OFFSET_MS = -5 * 60 * 60 * 1000
+
 function dayMidnight(dateParam?: string | null): Date {
-  const d = dateParam ? new Date(dateParam) : new Date()
-  d.setHours(0, 0, 0, 0)
-  return d
+  if (dateParam) {
+    // Si el cliente envía "YYYY-MM-DD", interpretarlo como día Colombia
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+      const [y, mo, d] = dateParam.split('-').map(Number)
+      // 00:00 COL = 05:00 UTC
+      return new Date(Date.UTC(y, mo - 1, d, 5, 0, 0, 0))
+    }
+    // ISO completo: usar la fecha del día Colombia de ese timestamp
+    const local = new Date(new Date(dateParam).getTime() + COL_OFFSET_MS)
+    return new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), 5, 0, 0, 0))
+  }
+  // Sin parámetro: día actual en Colombia
+  const nowLocal = new Date(Date.now() + COL_OFFSET_MS)
+  return new Date(Date.UTC(nowLocal.getUTCFullYear(), nowLocal.getUTCMonth(), nowLocal.getUTCDate(), 5, 0, 0, 0))
 }
 
 // GET /api/feed?babyId=xxx&date=2025-04-01
@@ -22,8 +37,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'babyId es requerido' }, { status: 400 })
     }
 
-    const endOfDay = new Date(date)
-    endOfDay.setHours(23, 59, 59, 999)
+    const endOfDay = new Date(date.getTime() + 24 * 60 * 60 * 1000 - 1)
 
     const feedings = await Feeding.find({
       babyId,
@@ -37,9 +51,15 @@ export async function GET(request: Request) {
       return {
         cycleTime,
         status: 'pending',
+        wakeTime: null,
+        startTime: null,
+        endTime: null,
+        durationMinutes: null,
         breastMilkMl: 0,
         complementMl: 0,
         totalMl: 0,
+        exceededLimit: false,
+        belowMinimum: false,
         diaperChanges: 0,
         diaperType: 'none',
       }
@@ -58,6 +78,7 @@ function feedingStatus(f: any): string {
   if (f.exceededLimit) return 'alert'
   if (f.endTime) return 'completed'
   if (f.startTime) return 'in_progress'
+  if (f.wakeTime) return 'awake'
   return 'pending'
 }
 
@@ -72,6 +93,7 @@ export async function POST(request: Request) {
       babyId,
       cycleTime,
       date,
+      wakeTime,
       breastMilkMl = 0,
       complementMl = 0,
       maxLimitMl = 120,
@@ -132,8 +154,9 @@ export async function POST(request: Request) {
           diaperChanges,
           diaperType,
           observations,
+          ...(wakeTime   ? { wakeTime:  new Date(wakeTime)  } : {}),
           ...(startTime ? { startTime: new Date(startTime) } : {}),
-          ...(endTime ? { endTime: new Date(endTime) } : {}),
+          ...(endTime   ? { endTime:   new Date(endTime)   } : {}),
           ...(durationMinutes != null ? { durationMinutes } : {}),
         },
         $setOnInsert: { babyId, date: dayDate, cycleTime },

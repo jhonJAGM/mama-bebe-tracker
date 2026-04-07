@@ -10,9 +10,10 @@ export interface IFeeding extends Document {
   babyId: Types.ObjectId
   date: Date              // medianoche del día (para agrupar por día sin TZ issues)
   cycleTime: CycleTime   // uno de los 8 ciclos fijos
-  startTime?: Date
-  endTime?: Date
-  durationMinutes?: number   // calculado automático
+  wakeTime?: Date        // HD — hora de despertar
+  startTime?: Date       // HI — inicio de lactancia
+  endTime?: Date         // HF — fin de lactancia
+  durationMinutes?: number   // calculado automático (HF - HI)
   breastMilkMl: number       // LM — leche materna
   complementMl: number       // C — complemento/fórmula
   totalMl: number            // LM + C, calculado automático
@@ -37,6 +38,7 @@ const FeedingSchema = new Schema<IFeeding>(
       enum: CYCLE_TIMES,
       required: true,
     },
+    wakeTime: { type: Date },
     startTime: { type: Date },
     endTime: { type: Date },
     durationMinutes: { type: Number, min: 0 },

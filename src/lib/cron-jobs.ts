@@ -5,7 +5,7 @@ import Medication from '@/models/Medication'
 import Diaper from '@/models/Diaper'
 import Sleep from '@/models/Sleep'
 import MomLog from '@/models/MomLog'
-import { sendFeedingAlert, sendMedAlert, sendDailySummary } from '@/lib/evolution-api'
+import { sendWhatsAppMessage, sendMedAlert, sendDailySummary } from '@/lib/evolution-api'
 
 // Evita registrar cron jobs múltiples veces en hot-reload de desarrollo
 let initialized = false
@@ -15,8 +15,13 @@ export function initCronJobs() {
   initialized = true
 
   const alertPhone = process.env.WHATSAPP_ALERT_PHONE
-  if (!alertPhone) {
-    console.warn('[cron] WHATSAPP_ALERT_PHONE no configurado — alertas WhatsApp deshabilitadas')
+  const groupJid = process.env.WHATSAPP_GROUP_JID
+
+  // Destinatario principal: grupo si está configurado, si no el teléfono individual
+  const mainRecipient = groupJid || alertPhone
+
+  if (!mainRecipient) {
+    console.warn('[cron] WHATSAPP_GROUP_JID ni WHATSAPP_ALERT_PHONE configurados — alertas deshabilitadas')
   }
 
   // ──────────────────────────────────────────────
@@ -27,13 +32,15 @@ export function initCronJobs() {
     if (!alertPhone) return
     try {
       await connectDB()
-      const lastFeeding = await Feeding.findOne().sort({ startTime: -1 }).lean()
-      if (!lastFeeding) return
+      const lastFeeding = await Feeding.findOne({ startTime: { $exists: true } }).sort({ startTime: -1 }).lean()
+      if (!lastFeeding || !lastFeeding.startTime) return
       const diff = Date.now() - new Date(lastFeeding.startTime).getTime()
       const threeHours = 3 * 60 * 60 * 1000
-      // Solo alerta si están exactamente en la ventana 3h–3h15m (para no repetir)
       if (diff >= threeHours && diff < threeHours + 15 * 60 * 1000) {
-        await sendFeedingAlert(alertPhone, new Date(lastFeeding.startTime).toISOString())
+        const last = new Date(lastFeeding.startTime)
+        const next = new Date(last.getTime() + threeHours)
+        const hora = next.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Bogota' })
+        await sendWhatsAppMessage(mainRecipient!, `👶 *Toma pendiente* — ${hora}\nHan pasado 3 horas desde la última alimentación de Noelia.`)
         console.log('[cron] Alerta de toma enviada')
       }
     } catch (err) {
@@ -46,7 +53,7 @@ export function initCronJobs() {
   // Cada 10 minutos revisa medicamentos con nextDue próximos (+/- 5 min)
   // ──────────────────────────────────────────────
   cron.schedule('*/10 * * * *', async () => {
-    if (!alertPhone) return
+    if (!mainRecipient) return
     try {
       await connectDB()
       const now = new Date()
@@ -59,7 +66,7 @@ export function initCronJobs() {
       }).lean()
 
       for (const med of dueMeds) {
-        await sendMedAlert(alertPhone, med.name, med.dosage)
+        await sendMedAlert(mainRecipient, med.name, med.dosage)
         console.log(`[cron] Alerta medicamento: ${med.name}`)
       }
     } catch (err) {
@@ -68,11 +75,56 @@ export function initCronJobs() {
   })
 
   // ──────────────────────────────────────────────
-  // Cron 3: Resumen diario — todos los días a las 8:00 AM (hora Bogotá = UTC-5)
-  // En UTC eso es las 13:00
+  // Cron 3: Recordatorio 8am Colombia (13:00 UTC)
+  // Baño de Noelia + Probióticos 5 gotas
   // ──────────────────────────────────────────────
   cron.schedule('0 13 * * *', async () => {
-    if (!alertPhone) return
+    if (!mainRecipient) return
+    try {
+      const msg = [
+        `🌅 *Buenos días, familia GM!*`,
+        ``,
+        `📋 Recordatorios de esta mañana:`,
+        `🛁 Baño de Noelia`,
+        `💊 Probióticos — 5 gotas`,
+        ``,
+        `Que tengan un hermoso día con Noelia 🌸`,
+      ].join('\n')
+      await sendWhatsAppMessage(mainRecipient, msg)
+      console.log('[cron] Recordatorio 8am enviado')
+    } catch (err) {
+      console.error('[cron] Error en recordatorio 8am:', err)
+    }
+  })
+
+  // ──────────────────────────────────────────────
+  // Cron 4: Recordatorio 9am Colombia (14:00 UTC)
+  // Baño de sol + limpiar nariz
+  // ──────────────────────────────────────────────
+  cron.schedule('0 14 * * *', async () => {
+    if (!mainRecipient) return
+    try {
+      const msg = [
+        `☀️ *¡Hora del sol!*`,
+        ``,
+        `🌞 Baño de sol — 15 a 20 minutos`,
+        `👃 Limpiar nariz de Noelia si es necesario`,
+        ``,
+        `El sol es vitamina D natural 💛`,
+      ].join('\n')
+      await sendWhatsAppMessage(mainRecipient, msg)
+      console.log('[cron] Recordatorio 9am enviado')
+    } catch (err) {
+      console.error('[cron] Error en recordatorio 9am:', err)
+    }
+  })
+
+  // ──────────────────────────────────────────────
+  // Cron 5: Resumen diario — 7:30am Colombia (12:30 UTC)
+  // Resumen del día anterior
+  // ──────────────────────────────────────────────
+  cron.schedule('30 12 * * *', async () => {
+    if (!mainRecipient) return
     try {
       await connectDB()
       const now = new Date()
@@ -98,7 +150,7 @@ export function initCronJobs() {
       const momPain =
         momResult.status === 'fulfilled' && momResult.value ? (momResult.value as any).painLevel : null
 
-      await sendDailySummary(alertPhone, { feedingsCount, diapersCount, sleepMinutes, momPain })
+      await sendDailySummary(mainRecipient, { feedingsCount, diapersCount, sleepMinutes, momPain })
       console.log('[cron] Resumen diario enviado')
     } catch (err) {
       console.error('[cron] Error en resumen diario:', err)
