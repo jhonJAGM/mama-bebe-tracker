@@ -6,14 +6,12 @@ buildCommand = "npm run build"
 NIXPACKS_NODE_VERSION = "20"
 
 [deploy]
-startCommand = "npm run start"
+startCommand = "node .next/standalone/server.js"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
-
-[environments.production]
-# Railway expone la app en el puerto indicado por $PORT
-# Next.js lo toma automáticamente via next start -p $PORT
 
 [environments.production.variables]
 NODE_ENV = "production"
 TZ = "America/Bogota"
+AUTH_TRUST_HOST = "true"
+NEXTAUTH_URL = "https://noecare-production.up.railway.app"
