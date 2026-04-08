@@ -6,7 +6,7 @@ buildCommand = "npm run build"
 NIXPACKS_NODE_VERSION = "20"
 
 [deploy]
-startCommand = "node .next/standalone/server.js"
+startCommand = "HOSTNAME=0.0.0.0 node .next/standalone/server.js"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
 
