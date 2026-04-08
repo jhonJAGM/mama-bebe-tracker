@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAppStore } from '@/store/appStore'
-import { CYCLE_TIMES, type CycleTime } from '@/models/Feeding'
+import { CYCLE_TIMES, type CycleTime } from '@/lib/cycle-constants'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
