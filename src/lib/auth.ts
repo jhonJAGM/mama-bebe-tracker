@@ -53,6 +53,16 @@ const { handlers, auth, signIn, signOut } = NextAuth({
     strategy: 'jwt',
   },
   callbacks: {
+    authorized({ auth, request: { nextUrl } }) {
+      const isLoggedIn = !!auth?.user
+      const isPublic = nextUrl.pathname.startsWith('/login') ||
+        nextUrl.pathname.startsWith('/api/auth') ||
+        nextUrl.pathname.startsWith('/api/whatsapp') ||
+        nextUrl.pathname === '/offline'
+      if (isPublic) return true
+      if (!isLoggedIn) return Response.redirect(new URL('/login', nextUrl))
+      return true
+    },
     async jwt({ token, account }) {
       if (account) {
         token.accessToken = account.access_token
