@@ -124,7 +124,8 @@ export default function OnboardingModal() {
             <select
               value={form.bloodType}
               onChange={(e) => update('bloodType', e.target.value)}
-              className="w-full rounded-xl bg-white/[0.08] border border-white/10 px-4 py-3 text-white text-sm focus:outline-none focus:border-rose-500/50 transition-all"
+              className="w-full rounded-xl border border-white/10 px-4 py-3 text-white text-sm focus:outline-none focus:border-rose-500/50 transition-all"
+              style={{ backgroundColor: '#1a1a2e', colorScheme: 'dark' }}
             >
               <option value="">No sé / No ingresado</option>
               {['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map(t => (
